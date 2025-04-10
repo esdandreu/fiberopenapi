@@ -19,7 +19,7 @@ func (o *Optional[T]) IsUndefined() bool {
 	return o.Value == nil
 }
 
-type Errormessage string
+type ErrorMessage string
 
 type Mark string
 
