@@ -1,4 +1,4 @@
-module fiberopenapi
+module github.com/esdandreu/fiberopenapi
 
 go 1.23.4
 
