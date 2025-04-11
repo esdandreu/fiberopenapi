@@ -17,6 +17,10 @@ func (g *Generator) Printf(format string, args ...any) {
 	fmt.Fprintf(&g.content, format, args...)
 }
 
+func (g *Generator) Println(args ...any) {
+	fmt.Fprintln(&g.content, args...)
+}
+
 func (g *Generator) WriteFile(path string) error {
 	src, err := format.Source(g.content.Bytes())
 	if err != nil {
@@ -27,4 +31,12 @@ func (g *Generator) WriteFile(path string) error {
 		return fmt.Errorf("failed to write generated code: %w", err)
 	}
 	return nil
+}
+
+func (g *Generator) IsEmpty() bool {
+	return g.content.Len() == 0
+}
+
+func (g *Generator) MergeIn(other *Generator) {
+	g.content.Write(other.content.Bytes())
 }

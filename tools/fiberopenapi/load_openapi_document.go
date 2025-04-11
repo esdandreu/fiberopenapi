@@ -10,11 +10,15 @@ import (
 
 // Read and parse an OpenAPI specification file.
 func LoadOpenAPIDocument(specPath string) (*libopenapi.DocumentModel[v3.Document], error) {
-	specData, err := os.ReadFile(specPath)
+	specByteArray, err := os.ReadFile(specPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read specification file at %s: %w", specPath, err)
 	}
-	document, err := libopenapi.NewDocument(specData)
+	return loadOpenAPIDocument(specByteArray)
+}
+
+func loadOpenAPIDocument(specByteArray []byte) (*libopenapi.DocumentModel[v3.Document], error) {
+	document, err := libopenapi.NewDocument(specByteArray)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create new document: %w", err)
 	}
