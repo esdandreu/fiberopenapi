@@ -29,16 +29,15 @@ type Nullable[T any] struct {
 	isNull bool
 }
 
-func (n *Nullable[T]) IsNull() bool {
-	return n.isNull
+func IsNull(v any) bool {
+	if nullable, ok := v.(Nullable[any]); ok {
+		return nullable.isNull
+	}
+	return false
 }
 
-type Optional[T any] struct {
-	Value *T
-}
-
-func (o *Optional[T]) IsUndefined() bool {
-	return o.Value == nil
+func IsUndefined(v any) bool {
+	return v == nil
 }
 `,
 		packageName,
