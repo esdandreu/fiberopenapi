@@ -1,4 +1,4 @@
-package router
+package example
 
 //go:generate go run ../../tools/fiberopenapi -spec ./specification.json
 

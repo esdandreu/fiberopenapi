@@ -89,19 +89,38 @@ func generateModel(g *Generator, schemaName string, schema *base.Schema) (err er
 			schemaName := pair.Key()
 			modelName, modelType := modelNameAndType(schemaName, schema)
 			proxy := pair.Value()
-			schema := proxy.Schema()
 			g.Printf("\t%s %s `json:\"%s\"`\n", modelName, modelType, schemaName)
 			if !proxy.IsReference() {
-				defer func() {
+				defer func(schema *base.Schema) {
 					err = errors.Join(err,
 						generateModel(g, schemaName, schema),
 					)
-				}()
+				}(proxy.Schema())
 			}
 		}
 		g.Printf("}\n\n")
 	case "array":
-		g.Printf("type %s []%s\n", modelName, modelName)
+		if schema.Items == nil {
+			return fmt.Errorf("array type must have an items property")
+		}
+		if schema.Items.IsB() {
+			return fmt.Errorf("array type with boolean items is not supported")
+		}
+		proxy := schema.Items.A
+		if proxy.IsReference() {
+			itemName := ToPascalCase(strings.TrimPrefix(
+				proxy.GetReference(), "#/components/schemas/",
+			))
+			g.Printf("type %s []%s\n", modelName, itemName)
+		} else {
+			itemName := modelName + "Item"
+			g.Printf("type %s []%s\n", modelName, itemName)
+			defer func(schema *base.Schema) {
+				err = errors.Join(err,
+					generateModel(g, itemName, schema),
+				)
+			}(proxy.Schema())
+		}
 		// TODO(GIA) Check schema.Items
 	case "number", "integer":
 		var goType string
