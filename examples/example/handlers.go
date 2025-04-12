@@ -10,8 +10,8 @@ import (
 
 // Implement this interface.
 type Handlers interface {
-	FindPet(c *fiber.Ctx, id FindPetId) error
-	UpdatePet(c *fiber.Ctx, id UpdatePetId) error
+	FindPet(c *fiber.Ctx, FindPetId FindPetId) error
+	UpdatePet(c *fiber.Ctx, UpdatePetId UpdatePetId) error
 }
 
 type rawHandlers interface {
@@ -33,17 +33,17 @@ func AddHandlers(app *fiber.App, h Handlers) {
 }
 
 func (h *validatedHandlers) FindPet(c *fiber.Ctx) error {
-	var id FindPetId
-	if err := json.Unmarshal([]byte(c.Params("id")), &id); err != nil {
+	var FindPetId FindPetId
+	if err := json.Unmarshal([]byte(c.Params("FindPetId")), &FindPetId); err != nil {
 		return err
 	}
-	return h.validated.FindPet(c, id)
+	return h.validated.FindPet(c, FindPetId)
 }
 
 func (h *validatedHandlers) UpdatePet(c *fiber.Ctx) error {
-	var id UpdatePetId
-	if err := json.Unmarshal([]byte(c.Params("id")), &id); err != nil {
+	var UpdatePetId UpdatePetId
+	if err := json.Unmarshal([]byte(c.Params("UpdatePetId")), &UpdatePetId); err != nil {
 		return err
 	}
-	return h.validated.UpdatePet(c, id)
+	return h.validated.UpdatePet(c, UpdatePetId)
 }

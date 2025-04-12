@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pb33f/libopenapi"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
@@ -85,44 +83,15 @@ func extractOperation(path, method string, parameters []*v3.Parameter, operation
 		Path:   path,
 	}
 	if operation.RequestBody != nil {
-		result.RequestBody = parseRequestBodyName(result.Name, operation.RequestBody)
+		result.RequestBody = extractModelFromOperationRequestBody(operation).Name()
 	}
-	result.Parameters = make([]Parameter, len(parameters)+len(operation.Parameters))
-	for i, parameter := range parameters {
-		result.Parameters[i] = parseParameter(result.Name, parameter)
-	}
-	for i, parameter := range operation.Parameters {
-		result.Parameters[len(parameters)+i] = parseParameter(result.Name, parameter)
+	for _, model := range extractModelsFromOperationParameters(parameters, operation) {
+		result.Parameters = append(result.Parameters, Parameter{
+			// TODO(GIA) This is not correct. Original name is lost. Can we
+			// camelCase the model name?
+			Name: model.Name(),
+			Type: model.Name(),
+		})
 	}
 	return result
-}
-
-func getReferenceName(proxy *base.SchemaProxy) string {
-	return ToPascalCase(strings.TrimPrefix(proxy.GetReference(), "#/components/schemas/"))
-}
-
-func parseRequestBodyName(parentName string, requestBody *v3.RequestBody) string {
-	content := requestBody.Content.GetOrZero("application/json")
-	if content == nil {
-		panic(fmt.Sprintf("no JSON content for %s request body", parentName))
-	}
-	proxy := content.Schema
-	if proxy.IsReference() {
-		return getReferenceName(proxy)
-	}
-	return parentName + "Item"
-}
-
-func parseParameter(parentName string, parameter *v3.Parameter) Parameter {
-	proxy := parameter.Schema
-	if proxy.IsReference() {
-		return Parameter{
-			Name: parameter.Name,
-			Type: getReferenceName(proxy),
-		}
-	}
-	return Parameter{
-		Name: parameter.Name,
-		Type: parentName + ToPascalCase(parameter.Name),
-	}
 }

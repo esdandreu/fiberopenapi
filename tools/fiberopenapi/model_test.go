@@ -26,10 +26,10 @@ func TestObjectModel(t *testing.T) {
 				return schema
 			}(),
 			expectedTypeDefinitions: map[string]string{
-				"Status": `struct {
-	Winner Winner
-	Board Board
-}`,
+				"Status": "struct {\n" +
+					"\tWinner Winner `json:\"winner\"`\n" +
+					"\tBoard Board `json:\"board\"`\n" +
+					"}",
 				"Winner": "string",
 				"Board":  "string",
 			},

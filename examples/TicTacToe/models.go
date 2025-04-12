@@ -83,14 +83,6 @@ func IsUndefined(v any) bool {
 // A text message describing an error
 type ErrorMessage string
 
-func (v ErrorMessage) Validate() error {
-	var errs []error
-	if got := len(v); got > 256 {
-		errs = append(errs, NewMaxLengthError(got, 256))
-	}
-	return errors.Join(errs...)
-}
-
 type Coordinate int
 
 // Possible values for a board square. `.` means empty square.

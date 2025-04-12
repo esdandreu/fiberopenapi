@@ -5,20 +5,22 @@ import (
 	"strings"
 )
 
-// Converts a string from kebab-case, snake_case, or camelCase to PascalCase
+// Converts a string from kebab-case, snake_case, or camelCase to PascalCase.
+// It also handles OpenAPI /path/{param} paths.
 func ToPascalCase(s string) string {
 	if s == "" {
 		return ""
 	}
 
-	// First replace hyphens with underscores to handle both kebab-case and snake_case
-	s = strings.ReplaceAll(s, "-", "_")
+	// Replace all non-alphanumeric characters with underscores
+	nonAlphanumericPattern := regexp.MustCompile(`[^a-zA-Z0-9]`)
+	s = nonAlphanumericPattern.ReplaceAllString(s, "_")
 
 	// Handle camelCase by inserting underscores before capital letters
 	// This regex finds positions before capital letters that are not at the start of the string
 	// and not already preceded by an underscore
-	re := regexp.MustCompile(`([a-z])([A-Z])`)
-	s = re.ReplaceAllString(s, "${1}_${2}")
+	camelCasePattern := regexp.MustCompile(`([a-z])([A-Z])`)
+	s = camelCasePattern.ReplaceAllString(s, "${1}_${2}")
 
 	// Split the string by underscores
 	parts := strings.Split(s, "_")

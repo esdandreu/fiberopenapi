@@ -79,3 +79,7 @@ func IsUndefined(v any) bool {
 	}
 	return false
 }
+
+type FindPetId int
+
+type UpdatePetId int

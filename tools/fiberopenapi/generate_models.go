@@ -2,13 +2,11 @@ package main
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/pb33f/libopenapi"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
@@ -35,10 +33,10 @@ func GenerateModels(spec *libopenapi.DocumentModel[v3.Document], packagePath, ou
 		strings.TrimPrefix(modelsFile, "package main\n\n"),
 	)
 
-	// Generate schema models.
-	err = generateModels(g, spec)
-	if err != nil {
-		return err
+	modelTypes := ExtractModelTypesFromDocument(spec)
+
+	for _, modelType := range modelTypes {
+		g.Printf("\n%stype %s %s\n", modelType.Docstring(), modelType.Name(), modelType.Definition())
 	}
 
 	// Write the generated code.
@@ -46,134 +44,4 @@ func GenerateModels(spec *libopenapi.DocumentModel[v3.Document], packagePath, ou
 		return fmt.Errorf("cannot write generated code: %w", err)
 	}
 	return nil
-}
-
-func generateModels(g *Generator, spec *libopenapi.DocumentModel[v3.Document]) error {
-	schemas := ExtractSchemasFromDocument(spec)
-	var errs []error
-	for _, schema := range schemas {
-		err := generateModel(g, schema)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
-}
-
-func modelNameAndType(schemaName string, schema *base.Schema) (string, string) {
-	modelName := ToPascalCase(schemaName)
-	modelType := modelName
-	if schema.Nullable != nil && *schema.Nullable {
-		modelType = "Nullable[" + modelType + "]"
-	}
-	return modelName, modelType
-}
-
-func generateModel(g *Generator, schema *Schema) (err error) {
-	// Data types in the OAS are based on the types defined by the JSON Schema
-	// Validation Specification Draft 2020-12: "null", "boolean", "object",
-	// "array", "number", "string", or "integer".
-	schemaType := schema.Type[0]
-	generateModelDoc(g, schema)
-	switch schemaType {
-	case "null":
-		return fmt.Errorf("null type not supported")
-	case "boolean":
-		g.Printf("type %s bool\n", schema.ModelType())
-	case "object":
-		g.Printf("type %s struct {\n", schema.ModelType())
-		properties := ExtractSchemasFromProperties(schema.Properties)
-		for _, property := range properties {
-			g.Printf("\t%s %s `json:\"%s\"`\n", property.ModelName(), property.ModelType(), property.Name)
-			if !property.ParentProxy.IsReference() {
-				defer func(schema *Schema) {
-					err = errors.Join(err,
-						generateModel(g, schema),
-					)
-				}(property)
-			}
-		}
-		g.Printf("}\n\n")
-		// TODO(GIA) Validation
-	case "array":
-		if schema.Items == nil {
-			return fmt.Errorf("array type must have an items property")
-		}
-		if schema.Items.IsB() {
-			return fmt.Errorf("array type with boolean items is not supported")
-		}
-		proxy := schema.Items.A
-		if proxy.IsReference() {
-			itemName := ToPascalCase(strings.TrimPrefix(
-				proxy.GetReference(), "#/components/schemas/",
-			))
-			g.Printf("type %s []%s\n", schema.ModelType(), itemName)
-		} else {
-			itemName := schema.ModelName() + "Item"
-			g.Printf("type %s []%s\n", schema.ModelType(), itemName)
-			defer func(schema *base.Schema) {
-				err = errors.Join(err,
-					generateModel(g, &Schema{proxy.Schema(), itemName}),
-				)
-			}(proxy.Schema())
-		}
-		// TODO(GIA) Validation
-	case "number", "integer":
-		var goType string
-		switch schema.Format {
-		case "int64":
-			goType = "int64"
-		case "int32":
-			goType = "int32"
-		case "float":
-			goType = "float32"
-		case "double":
-			goType = "float64"
-		default:
-			switch schemaType {
-			case "number":
-				goType = "float"
-			case "integer":
-				goType = "int"
-			}
-		}
-		g.Printf("type %s %s\n", schema.ModelType(), goType)
-		// TODO(GIA) Validation
-	case "string":
-		g.Printf("type %s string\n", schema.ModelType())
-		gv := &Generator{}
-		if schema.MaxLength != nil {
-			want := *schema.MaxLength
-			gv.Printf("\tif got := len(v); got > %d {\n", want)
-			gv.Printf("\t\terrs = append(errs, NewMaxLengthError(got, %d))\n", want)
-			gv.Println("\t}")
-		}
-		// ? schema.MinLength
-		// ? schema.Pattern or schema.Format
-		if !gv.IsEmpty() {
-			g.Printf("\nfunc (v %s) Validate() error {\n", schema.ModelType())
-			g.Println("\tvar errs []error")
-			g.MergeIn(gv)
-			g.Printf("\treturn errors.Join(errs...)\n}\n")
-		}
-	default:
-		return fmt.Errorf("unsupported type: %s", schemaType)
-	}
-	return nil
-}
-
-func generateModelDoc(g *Generator, schema *Schema) {
-	g.Println()
-	if schema.Deprecated != nil && *schema.Deprecated {
-		if schema.Description != "" {
-			g.Printf("// Deprecated: %s\n", schema.Description)
-		} else {
-			g.Println("// Deprecated")
-		}
-	} else if schema.Description != "" {
-		g.Printf("// %s\n", schema.Description)
-	}
-	// ? schema.ExternalDocs
-	// ? schema.Example
-	// ? schema.Examples
 }
