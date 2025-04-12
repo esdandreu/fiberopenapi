@@ -36,7 +36,7 @@ func (v ErrorMessage) Validate() error {
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
 			g := &Generator{}
-			require.NoError(t, generateModel(g, name, testCase.schema))
+			require.NoError(t, generateModel(g, &Schema{testCase.schema, name}))
 			assert.Equal(t, testCase.expected, g.content.String())
 		})
 	}

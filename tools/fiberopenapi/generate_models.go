@@ -12,7 +12,7 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
-//go:embed models.go
+//go:embed base_models.go
 var modelsFile string
 
 func GenerateModels(spec *libopenapi.DocumentModel[v3.Document], packagePath, outputPath string) error {
@@ -49,11 +49,10 @@ func GenerateModels(spec *libopenapi.DocumentModel[v3.Document], packagePath, ou
 }
 
 func generateModels(g *Generator, spec *libopenapi.DocumentModel[v3.Document]) error {
+	schemas := ExtractSchemasFromDocument(spec)
 	var errs []error
-	for pair := spec.Model.Components.Schemas.First(); pair != nil; pair = pair.Next() {
-		name := pair.Key()
-		schema := pair.Value().Schema()
-		err := generateModel(g, name, schema)
+	for _, schema := range schemas {
+		err := generateModel(g, schema)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -70,8 +69,7 @@ func modelNameAndType(schemaName string, schema *base.Schema) (string, string) {
 	return modelName, modelType
 }
 
-func generateModel(g *Generator, schemaName string, schema *base.Schema) (err error) {
-	modelName, modelType := modelNameAndType(schemaName, schema)
+func generateModel(g *Generator, schema *Schema) (err error) {
 	// Data types in the OAS are based on the types defined by the JSON Schema
 	// Validation Specification Draft 2020-12: "null", "boolean", "object",
 	// "array", "number", "string", or "integer".
@@ -81,24 +79,22 @@ func generateModel(g *Generator, schemaName string, schema *base.Schema) (err er
 	case "null":
 		return fmt.Errorf("null type not supported")
 	case "boolean":
-		g.Printf("type %s bool\n", modelType)
+		g.Printf("type %s bool\n", schema.ModelType())
 	case "object":
-		g.Printf("type %s struct {\n", modelType)
-		// TODO(GIA) Validation
-		for pair := schema.Properties.First(); pair != nil; pair = pair.Next() {
-			schemaName := pair.Key()
-			modelName, modelType := modelNameAndType(schemaName, schema)
-			proxy := pair.Value()
-			g.Printf("\t%s %s `json:\"%s\"`\n", modelName, modelType, schemaName)
-			if !proxy.IsReference() {
-				defer func(schema *base.Schema) {
+		g.Printf("type %s struct {\n", schema.ModelType())
+		properties := ExtractSchemasFromProperties(schema.Properties)
+		for _, property := range properties {
+			g.Printf("\t%s %s `json:\"%s\"`\n", property.ModelName(), property.ModelType(), property.Name)
+			if !property.ParentProxy.IsReference() {
+				defer func(schema *Schema) {
 					err = errors.Join(err,
-						generateModel(g, schemaName, schema),
+						generateModel(g, schema),
 					)
-				}(proxy.Schema())
+				}(property)
 			}
 		}
 		g.Printf("}\n\n")
+		// TODO(GIA) Validation
 	case "array":
 		if schema.Items == nil {
 			return fmt.Errorf("array type must have an items property")
@@ -111,17 +107,17 @@ func generateModel(g *Generator, schemaName string, schema *base.Schema) (err er
 			itemName := ToPascalCase(strings.TrimPrefix(
 				proxy.GetReference(), "#/components/schemas/",
 			))
-			g.Printf("type %s []%s\n", modelName, itemName)
+			g.Printf("type %s []%s\n", schema.ModelType(), itemName)
 		} else {
-			itemName := modelName + "Item"
-			g.Printf("type %s []%s\n", modelName, itemName)
+			itemName := schema.ModelName() + "Item"
+			g.Printf("type %s []%s\n", schema.ModelType(), itemName)
 			defer func(schema *base.Schema) {
 				err = errors.Join(err,
-					generateModel(g, itemName, schema),
+					generateModel(g, &Schema{proxy.Schema(), itemName}),
 				)
 			}(proxy.Schema())
 		}
-		// TODO(GIA) Check schema.Items
+		// TODO(GIA) Validation
 	case "number", "integer":
 		var goType string
 		switch schema.Format {
@@ -141,10 +137,10 @@ func generateModel(g *Generator, schemaName string, schema *base.Schema) (err er
 				goType = "int"
 			}
 		}
-		g.Printf("type %s %s\n", modelType, goType)
+		g.Printf("type %s %s\n", schema.ModelType(), goType)
 		// TODO(GIA) Validation
 	case "string":
-		g.Printf("type %s string\n", modelType)
+		g.Printf("type %s string\n", schema.ModelType())
 		gv := &Generator{}
 		if schema.MaxLength != nil {
 			want := *schema.MaxLength
@@ -155,7 +151,7 @@ func generateModel(g *Generator, schemaName string, schema *base.Schema) (err er
 		// ? schema.MinLength
 		// ? schema.Pattern or schema.Format
 		if !gv.IsEmpty() {
-			g.Printf("\nfunc (v %s) Validate() error {\n", modelType)
+			g.Printf("\nfunc (v %s) Validate() error {\n", schema.ModelType())
 			g.Println("\tvar errs []error")
 			g.MergeIn(gv)
 			g.Printf("\treturn errors.Join(errs...)\n}\n")
@@ -166,7 +162,7 @@ func generateModel(g *Generator, schemaName string, schema *base.Schema) (err er
 	return nil
 }
 
-func generateModelDoc(g *Generator, schema *base.Schema) {
+func generateModelDoc(g *Generator, schema *Schema) {
 	g.Println()
 	if schema.Deprecated != nil && *schema.Deprecated {
 		if schema.Description != "" {
