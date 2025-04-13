@@ -56,11 +56,24 @@ func (m *baseModel) Docstring() string {
 	return ""
 }
 
+type nullModel struct {
+	baseModel
+}
+
+func (m *nullModel) Definition() string {
+	return "Null"
+}
+
+func (m *nullModel) Types() []ModelType {
+	return []ModelType{m}
+}
+
 type stringModel struct {
 	baseModel
 }
 
 func (m *stringModel) Definition() string {
+	// TODO(GIA) Time formats: date-time, date, time etc.
 	return "string"
 }
 
@@ -130,7 +143,7 @@ func (m *objectModel) Definition() string {
 	for pair := m.properties.First(); pair != nil; pair = pair.Next() {
 		property := pair.Value()
 		// TODO(GIA) Apply nullable and required
-		def += fmt.Sprintf("\t%s %s `json:\"%s\"`\n",
+		def += fmt.Sprintf("\t%s %s `json:\"%s,omitempty\"`\n",
 			property.Name(), property.Name(), pair.Key(),
 		)
 	}
@@ -198,6 +211,8 @@ func newReferenceModel(proxy *base.SchemaProxy) *referenceModel {
 	name := ToPascalCase(strings.TrimPrefix(reference, "#/components/schemas/"))
 	return &referenceModel{baseModel{name, proxy.Schema()}}
 }
+
+// TODO(GIA) unionModel
 
 func NewModel(name string, schemaProxy *base.SchemaProxy) Model {
 	if schemaProxy.IsReference() {

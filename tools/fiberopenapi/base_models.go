@@ -37,6 +37,8 @@ func NewMinLengthError(got int, want int) error {
 	return NewValidationError("%w: got %d, want %d", ErrMinLength, got, want)
 }
 
+type Null struct{}
+
 type nullable interface {
 	IsNull() bool
 }
