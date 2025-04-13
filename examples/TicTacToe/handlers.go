@@ -11,8 +11,8 @@ import (
 // Implement this interface.
 type Handlers interface {
 	GetBoard(c *fiber.Ctx) error
-	GetSquare(c *fiber.Ctx, Coordinate Coordinate, Coordinate Coordinate) error
-	PutSquare(c *fiber.Ctx, body Mark, Coordinate Coordinate, Coordinate Coordinate) error
+	GetSquare(c *fiber.Ctx, row Coordinate, column Coordinate) error
+	PutSquare(c *fiber.Ctx, body Mark, row Coordinate, column Coordinate) error
 }
 
 type rawHandlers interface {
@@ -40,15 +40,15 @@ func (h *validatedHandlers) GetBoard(c *fiber.Ctx) error {
 }
 
 func (h *validatedHandlers) GetSquare(c *fiber.Ctx) error {
-	var Coordinate Coordinate
-	if err := json.Unmarshal([]byte(c.Params("Coordinate")), &Coordinate); err != nil {
+	var row Coordinate
+	if err := json.Unmarshal([]byte(c.Params("row")), &row); err != nil {
 		return err
 	}
-	var Coordinate Coordinate
-	if err := json.Unmarshal([]byte(c.Params("Coordinate")), &Coordinate); err != nil {
+	var column Coordinate
+	if err := json.Unmarshal([]byte(c.Params("column")), &column); err != nil {
 		return err
 	}
-	return h.validated.GetSquare(c, Coordinate, Coordinate)
+	return h.validated.GetSquare(c, row, column)
 }
 
 func (h *validatedHandlers) PutSquare(c *fiber.Ctx) error {
@@ -56,13 +56,13 @@ func (h *validatedHandlers) PutSquare(c *fiber.Ctx) error {
 	if err := json.Unmarshal(c.Body(), &body); err != nil {
 		return err
 	}
-	var Coordinate Coordinate
-	if err := json.Unmarshal([]byte(c.Params("Coordinate")), &Coordinate); err != nil {
+	var row Coordinate
+	if err := json.Unmarshal([]byte(c.Params("row")), &row); err != nil {
 		return err
 	}
-	var Coordinate Coordinate
-	if err := json.Unmarshal([]byte(c.Params("Coordinate")), &Coordinate); err != nil {
+	var column Coordinate
+	if err := json.Unmarshal([]byte(c.Params("column")), &column); err != nil {
 		return err
 	}
-	return h.validated.PutSquare(c, body, Coordinate, Coordinate)
+	return h.validated.PutSquare(c, body, row, column)
 }

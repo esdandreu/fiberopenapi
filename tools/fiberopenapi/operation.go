@@ -10,6 +10,7 @@ import (
 type Parameter struct {
 	Name string
 	Type string
+	// TODO(GIA) Required bool
 }
 
 type Operation struct {
@@ -85,12 +86,10 @@ func extractOperation(path, method string, parameters []*v3.Parameter, operation
 	if operation.RequestBody != nil {
 		result.RequestBody = extractModelFromOperationRequestBody(operation).Name()
 	}
-	for _, model := range extractModelsFromOperationParameters(parameters, operation) {
+	for _, pair := range extractModelsFromOperationParameters(parameters, operation) {
 		result.Parameters = append(result.Parameters, Parameter{
-			// TODO(GIA) This is not correct. Original name is lost. Can we
-			// camelCase the model name?
-			Name: model.Name(),
-			Type: model.Name(),
+			Name: pair.Key(),
+			Type: pair.Value().Name(),
 		})
 	}
 	return result

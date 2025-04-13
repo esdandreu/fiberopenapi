@@ -280,9 +280,11 @@ func extractModelsFromOperation(
 	if operation.RequestBody != nil {
 		models = append(models, extractModelFromOperationRequestBody(operation))
 	}
-	models = append(models, extractModelsFromOperationParameters(
+	for _, pair := range extractModelsFromOperationParameters(
 		pathItemParameters, operation,
-	)...)
+	) {
+		models = append(models, pair.Value())
+	}
 	return models
 }
 
@@ -296,17 +298,20 @@ func extractModelFromOperationRequestBody(operation *v3.Operation) Model {
 
 func extractModelsFromOperationParameters(
 	pathItemParameters []*v3.Parameter, operation *v3.Operation,
-) []Model {
+) []orderedmap.Pair[string, Model] {
 	return append(
 		extractModelsFromParameters(operation.OperationId, operation.Parameters),
 		extractModelsFromParameters(operation.OperationId, pathItemParameters)...,
 	)
 }
 
-func extractModelsFromParameters(prefix string, parameters []*v3.Parameter) []Model {
-	models := make([]Model, len(parameters))
+func extractModelsFromParameters(prefix string, parameters []*v3.Parameter) []orderedmap.Pair[string, Model] {
+	models := make([]orderedmap.Pair[string, Model], len(parameters))
 	for i, parameter := range parameters {
-		models[i] = NewModel(prefix+ToPascalCase(parameter.Name), parameter.Schema)
+		models[i] = orderedmap.NewPair(
+			ToCamelCase(parameter.Name),
+			NewModel(prefix+ToPascalCase(parameter.Name), parameter.Schema),
+		)
 	}
 	return models
 }
