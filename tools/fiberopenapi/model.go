@@ -220,6 +220,7 @@ func NewModel(name string, schemaProxy *base.SchemaProxy) Model {
 	}
 	modelName := ToPascalCase(name)
 	schema := schemaProxy.Schema()
+	// TODO(GIA) Check if schema.Type is empty.
 	schemaType := schema.Type[0]
 	switch schemaType {
 	case "boolean":
@@ -306,7 +307,11 @@ func extractModelsFromOperation(
 func extractModelFromOperationRequestBody(operation *v3.Operation) Model {
 	content := operation.RequestBody.Content.GetOrZero("application/json")
 	if content == nil {
-		panic(fmt.Sprintf("no JSON content for %s request body", operation.OperationId))
+		// TODO(GIA) Should it just ignore this operation? Return error?
+		panic(fmt.Sprintf(
+			"no application/json content for request body of operation %s",
+			operation.OperationId,
+		))
 	}
 	return NewModel(operation.OperationId+"RequestBody", content.Schema)
 }

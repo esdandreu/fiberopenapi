@@ -39,6 +39,8 @@ func NewMinLengthError(got int, want int) error {
 	return NewValidationError("%w: got %d, want %d", ErrMinLength, got, want)
 }
 
+type Null struct{}
+
 type nullable interface {
 	IsNull() bool
 }
@@ -69,6 +71,6 @@ type BoardItem []Mark
 type Winner string
 
 type Status struct {
-	Winner Winner `json:"winner"`
-	Board  Board  `json:"board"`
+	Winner Winner `json:"winner,omitempty"`
+	Board  Board  `json:"board,omitempty"`
 }
